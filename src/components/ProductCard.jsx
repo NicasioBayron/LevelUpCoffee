@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { imageUrl } from "../imageUrl";
 import { money, price } from "../database";
-import { useShop } from "../store";
+import { useShop } from "../Store.jsx";
 
 export function ProductCard({ product: p }) {
   const { add } = useShop();

@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useShop } from "./store";
+import { useShop } from "./Store.jsx";
 import { Header, Footer, Empty } from "./components";
 import {
   Home,

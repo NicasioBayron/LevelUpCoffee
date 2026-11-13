@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./index.css";
-import { Provider } from "./Store";
+import { Provider } from "./Store.jsx";
 import { ErrorBoundary } from "./components";
 import { App } from "./App";
 

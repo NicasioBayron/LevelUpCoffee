@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { db, money, price } from "../database";
 import { branches, openingHours } from "../locations";
-import { useShop } from "../store";
+import { useShop } from "../Store.jsx";
 import { PageTitle, Empty, Field, ErrorMessage } from "../components";
 
 export function Checkout() {

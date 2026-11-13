@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { db, money, price } from "../database";
 import { imageUrl } from "../imageUrl";
-import { useShop } from "../Store";
+import { useShop } from "../Store.jsx";
 import { PageTitle, Empty, Quantity } from "../components";
 
 export function Cart() {

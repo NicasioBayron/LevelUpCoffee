@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { db } from "../database";
-import { useShop } from "../store";
+import { useShop } from "../Store.jsx";
 
 export function Header() {
   const [open, setOpen] = useState(false);

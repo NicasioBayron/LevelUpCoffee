@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { db } from "../database";
 import { imageUrl } from "../imageUrl";
-import { useShop } from "../Store";
+import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
 
 const events = [

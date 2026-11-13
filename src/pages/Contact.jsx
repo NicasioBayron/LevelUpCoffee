@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Locations } from "../components/Locations";
 import { db } from "../database";
-import { useShop } from "../Store";
+import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
 
 export function Contact() {

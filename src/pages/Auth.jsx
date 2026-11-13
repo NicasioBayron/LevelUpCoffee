@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { db, passwordHash, validRun } from "../database";
 import { imageUrl } from "../imageUrl";
-import { useShop } from "../Store";
+import { useShop } from "../Store.jsx";
 import { Field, ErrorMessage } from "../components";
 
 export function Auth({ register = false }) {
