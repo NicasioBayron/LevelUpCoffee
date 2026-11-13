@@ -2,8 +2,8 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./styles.css";
-import { Provider } from "./store";
+import "./index.css";
+import { Provider } from "./Store";
 import { ErrorBoundary } from "./components";
 import { App } from "./App";
 

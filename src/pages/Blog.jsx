@@ -1,7 +1,7 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
-import { imageUrl } from "./imageUrl";
-import { PageTitle, Empty } from "./components";
+import { imageUrl } from "../imageUrl";
+import { PageTitle, Empty } from "../components";
 
 const articles = [
   {

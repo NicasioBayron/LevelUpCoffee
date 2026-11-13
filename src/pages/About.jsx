@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { imageUrl } from "./imageUrl";
-import { PageTitle } from "./components";
+import { imageUrl } from "../imageUrl";
+import { PageTitle } from "../components";
 
 export function About() {
   return (

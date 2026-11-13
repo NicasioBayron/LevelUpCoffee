@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { db, passwordHash } from "../database";
-import { useShop } from "../store";
+import { useShop } from "../Store";
 import { Empty, Field, ErrorMessage } from "../components";
 
 export function AdminSetup() {

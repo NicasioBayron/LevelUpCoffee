@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { db } from "../database";
-import { useShop } from "../store";
+import { useShop } from "../Store";
 import { PageTitle, Empty, Field, ErrorMessage } from "../components";
 import { Receipt } from "./PaymentResult";
 

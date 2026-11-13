@@ -16,8 +16,8 @@ import {
   Contact,
   Terms,
 } from "./pages";
-import { Admin } from "./admin";
-import { About, Blog } from "./editorial";
+import { Admin } from "./pages/admin";
+import { About, Blog } from "./pages";
 
 export function App() {
   const { notice } = useShop();

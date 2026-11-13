@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { db, money, price, passwordHash, validRun } from "../database";
-import { useShop } from "../store";
+import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
 import { Receipt } from "./PaymentResult";
 import { AdminSetup } from "./AdminSetup";

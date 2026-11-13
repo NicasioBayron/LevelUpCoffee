@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { db, money, price } from "../database";
 import { imageUrl } from "../imageUrl";
-import { useShop } from "../store";
+import { useShop } from "../Store";
 import { Empty, Quantity, ProductCard } from "../components";
 
 export function Detail() {
