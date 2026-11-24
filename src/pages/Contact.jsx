@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Locations } from "../components/Locations";
-import { db } from "../database";
+import { communityService } from "../api/services";
 import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
 
@@ -8,7 +8,7 @@ export function Contact() {
   const { user, setNotice } = useShop();
   const [error, setError] = useState("");
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     try {
       const f = Object.fromEntries(new FormData(e.currentTarget));
@@ -16,11 +16,7 @@ export function Contact() {
         throw Error(
           "Escribe tu nombre y un mensaje de al menos 10 caracteres.",
         );
-      db.create("messages", {
-        ...f,
-        date: new Date().toISOString(),
-        status: "Nuevo",
-      });
+      await communityService.crearMensaje({ ...f, usuarioId: user?.id || null });
       e.currentTarget.reset();
       setError("");
       setNotice("Mensaje enviado. ¡Gracias por contactarnos!");
@@ -62,6 +58,7 @@ export function Contact() {
               type="email"
               defaultValue={user?.correo}
             />
+            <Field label="Asunto" name="asunto" defaultValue="Consulta general" />
             <label className="field">
               Tu mensaje
               <textarea

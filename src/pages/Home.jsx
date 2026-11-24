@@ -1,12 +1,39 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { db } from "../database";
+import { productService } from "../api/services";
 import { imageUrl } from "../imageUrl";
-import { ProductCard } from "../components";
+import { ErrorMessage, ProductCard } from "../components";
 
 export function Home() {
-  const products = db.list("products");
-  
+  const [result, setResult] = useState({
+    products: [],
+    loading: true,
+    error: "",
+  });
+  const [retry, setRetry] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    productService
+      .getAll({ tipo: "juego" })
+      .then((products) => {
+        if (active) setResult({ products, loading: false, error: "" });
+      })
+      .catch((error) => {
+        if (active) {
+          setResult({
+            products: [],
+            loading: false,
+            error: error.response?.data?.message || error.message,
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [retry]);
+
   return (
     <>
       <section className="hero">
@@ -103,14 +130,29 @@ export function Home() {
             Ver todos &rarr;
           </Link>
         </div>
-        <div className="product-grid">
-          {products
-            .filter((p) => p.tipo === "juego")
-            .slice(0, 4)
-            .map((p) => (
+        {result.loading ? (
+          <p role="status">Cargando favoritos…</p>
+        ) : result.error ? (
+          <>
+            <ErrorMessage
+              message={`No se pudieron cargar los productos: ${result.error}`}
+            />
+            <button
+              className="btn btn-lime"
+              onClick={() => setRetry((attempt) => attempt + 1)}
+            >
+              Reintentar
+            </button>
+          </>
+        ) : result.products.length ? (
+          <div className="product-grid">
+            {result.products.slice(0, 4).map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
-        </div>
+          </div>
+        ) : (
+          <p>No hay productos para mostrar.</p>
+        )}
       </section>
     </>
   );

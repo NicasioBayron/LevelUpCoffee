@@ -1,17 +1,86 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { db, money, price } from "../database";
+import { money, price } from "../database";
+import { productService } from "../api/services";
 import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
-import { Empty, Quantity, ProductCard } from "../components";
+import { Empty, ErrorMessage, Quantity, ProductCard } from "../components";
 
 export function Detail() {
-  const { id } = useParams(),
-    p = db.get("products", id);
+  const { id } = useParams();
   const [quantity, setQuantity] = useState(1);
+  const [retry, setRetry] = useState(0);
+  const [result, setResult] = useState({
+    key: "",
+    product: null,
+    relatedProducts: [],
+    error: "",
+  });
   const { add } = useShop();
+  const requestKey = `${id}:${retry}`;
+  const loading = result.key !== requestKey;
+  const error = loading ? "" : result.error;
+  const product = loading || error ? null : result.product;
+  const relatedProducts = loading || error ? [] : result.relatedProducts;
 
-  if (!p)
+  useEffect(() => {
+    let active = true;
+    Promise.all([productService.getById(id), productService.getAll()])
+      .then(([item, products]) => {
+        if (active) {
+          setResult({
+            key: requestKey,
+            product: item,
+            relatedProducts: products
+              .filter(
+                (other) =>
+                  other.tipo === item.tipo && String(other.id) !== String(item.id),
+              )
+              .slice(0, 4),
+            error: "",
+          });
+        }
+      })
+      .catch((requestError) => {
+        if (active) {
+          setResult({
+            key: requestKey,
+            product: null,
+            relatedProducts: [],
+            error:
+              requestError.response?.data?.message ||
+              requestError.message ||
+              "Error desconocido.",
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id, requestKey]);
+
+  if (loading)
+    return (
+      <main className="container section">
+        <p role="status">Cargando producto…</p>
+      </main>
+    );
+
+  if (error)
+    return (
+      <main className="container section">
+        <ErrorMessage message={`No se pudo cargar el producto: ${error}`} />
+        <button
+          className="btn btn-lime"
+          onClick={() => setRetry((attempt) => attempt + 1)}
+        >
+          Reintentar
+        </button>
+      </main>
+    );
+
+  if (!product)
     return (
       <main className="container section">
         <Empty title="Producto no encontrado" />
@@ -20,31 +89,39 @@ export function Detail() {
 
   return (
     <main className="container section">
-      <Link to={p.tipo === "cafe" ? "/menu" : "/tienda"} className="muted">
+      <Link
+        to={product.tipo === "cafe" ? "/menu" : "/tienda"}
+        className="muted"
+      >
         ← Volver al catálogo
       </Link>
       <div className="detail-grid">
         <div className="detail-image">
-          <img src={imageUrl(p.imagen)} alt={p.nombre} />
+          <img src={imageUrl(product.imagen)} alt={product.nombre} />
         </div>
         <div>
-          <div className="eyebrow">{p.categoria} / LEVEL UP</div>
-          <h1>{p.nombre}</h1>
+          <div className="eyebrow">{product.categoria} / LEVEL UP</div>
+          <h1>{product.nombre}</h1>
           <p className="detail-price">
-            {money(price(p))} {p.descuento > 0 && <del>{money(p.precio)}</del>}
+            {money(price(product))}{" "}
+            {product.descuento > 0 && <del>{money(product.precio)}</del>}
           </p>
-          <p>{p.descripcion}</p>
-          <p className={p.stock ? "stock" : "text-danger"}>
-            {p.stock
-              ? `${p.stock} disponibles · Listos para tu próxima partida`
+          <p>{product.descripcion}</p>
+          <p className={product.stock ? "stock" : "text-danger"}>
+            {product.stock
+              ? `${product.stock} disponibles · Listos para tu próxima partida`
               : "Agotado por ahora"}
           </p>
           <div className="d-flex gap-3 flex-wrap">
-            <Quantity value={quantity} onChange={setQuantity} max={p.stock} />
+            <Quantity
+              value={quantity}
+              onChange={setQuantity}
+              max={product.stock}
+            />
             <button
               className="btn btn-lime"
-              disabled={!p.stock}
-              onClick={() => add(p, quantity)}
+              disabled={!product.stock}
+              onClick={() => add(product, quantity)}
             >
               Añadir al carrito &rarr;
             </button>
@@ -58,13 +135,9 @@ export function Detail() {
       </div>
       <h2>También te puede gustar</h2>
       <div className="product-grid mt-4">
-        {db
-          .list("products")
-          .filter((x) => x.tipo === p.tipo && x.id !== p.id)
-          .slice(0, 4)
-          .map((x) => (
-            <ProductCard key={x.id} product={x} />
-          ))}
+        {relatedProducts.map((item) => (
+          <ProductCard key={item.id} product={item} />
+        ))}
       </div>
     </main>
   );

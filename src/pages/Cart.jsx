@@ -1,30 +1,91 @@
-import React from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { db, money, price } from "../database";
+import { productService } from "../api/services";
+import { migrateCartProductIds } from "../api/cart";
 import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
-import { PageTitle, Empty, Quantity } from "../components";
+import { PageTitle, Empty, ErrorMessage, Quantity } from "../components";
 
 export function Cart() {
   const { setNotice } = useShop();
-  const lines = db.list("cart"),
-    products = db.list("products");
-
-  const items = lines.map((l) => ({
-    ...l,
-    product: products.find((p) => p.id === l.id),
+  const lines = db.list("cart");
+  const hasLines = lines.length > 0;
+  const cartKey = lines.map((line) => line.id).join(",");
+  const [retry, setRetry] = useState(0);
+  const [result, setResult] = useState({
+    key: "",
+    products: [],
+    error: "",
+  });
+  const requestKey = `${cartKey}:${retry}`;
+  const loading = result.key !== requestKey;
+  const error = loading ? "" : result.error;
+  const products = loading || error ? [] : result.products;
+  const items = lines.map((line) => ({
+    ...line,
+    product: products.find((product) => String(product.id) === String(line.id)),
   }));
-
   const total = items.reduce(
-    (s, l) => s + (l.product ? price(l.product) * l.quantity : 0),
+    (sum, line) =>
+      sum +
+      (line.product ? price(line.product) * line.quantity : 0),
     0,
   );
+  const canCheckout =
+    !loading &&
+    !error &&
+    items.length > 0 &&
+    items.every(
+      (line) =>
+        line.product &&
+        Number.isInteger(line.quantity) &&
+        line.quantity > 0 &&
+        line.quantity <= line.product.stock,
+    );
+
+  useEffect(() => {
+    if (!hasLines) return undefined;
+    let active = true;
+    productService
+      .getAll()
+      .then((products) => {
+        if (active) {
+          migrateCartProductIds(products);
+          setResult({ key: requestKey, products, error: "" });
+        }
+      })
+      .catch((requestError) => {
+        if (active) {
+          setResult({
+            key: requestKey,
+            products: [],
+            error:
+              requestError.response?.data?.message ||
+              requestError.message ||
+              "Error desconocido.",
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [cartKey, hasLines, requestKey]);
 
   function change(id, quantity) {
     try {
-      db.setCart(lines.map((l) => (l.id === id ? { ...l, quantity } : l)));
-    } catch (e) {
-      setNotice(e.message);
+      db.setCart(lines.map((line) => (line.id === id ? { ...line, quantity } : line)));
+    } catch (error) {
+      setNotice(error.message);
+    }
+  }
+
+  function remove(id) {
+    try {
+      db.setCart(lines.filter((line) => line.id !== id));
+    } catch (error) {
+      setNotice(error.message);
     }
   }
 
@@ -34,53 +95,67 @@ export function Cart() {
         Revisa tu selección antes de continuar.
       </PageTitle>
 
-      {!lines.length ? (
+      {loading && lines.length > 0 ? (
+        <p role="status">Actualizando productos y stock…</p>
+      ) : error ? (
+        <>
+          <ErrorMessage
+            message={`No se pudo actualizar el carrito: ${error}`}
+          />
+          <button
+            className="btn btn-lime"
+            onClick={() => setRetry((attempt) => attempt + 1)}
+          >
+            Reintentar
+          </button>
+        </>
+      ) : !lines.length ? (
         <Empty title="Tu carrito está esperando una aventura" />
       ) : (
         <div className="checkout-grid">
           <div>
-            {items.map((l) => (
-              <article className="cart-row" key={l.id}>
-                {l.product ? (
+            {items.map((line) => (
+              <article className="cart-row" key={line.id}>
+                {line.product ? (
                   <>
-                    <Link to={"/producto/" + l.id}>
+                    <Link to={"/producto/" + line.product.id}>
                       <img
-                        src={imageUrl(l.product.imagen)}
-                        alt={l.product.nombre}
+                        src={imageUrl(line.product.imagen)}
+                        alt={line.product.nombre}
                       />
                     </Link>
                     <div className="flex-grow-1">
-                      <small className="eyebrow">{l.product.categoria}</small>
+                      <small className="eyebrow">
+                        {line.product.categoria}
+                      </small>
                       <h3>
-                        <Link to={"/producto/" + l.id}>{l.product.nombre}</Link>
+                        <Link to={"/producto/" + line.product.id}>
+                          {line.product.nombre}
+                        </Link>
                       </h3>
-                      <p>{money(price(l.product))}</p>
-                      {l.quantity > l.product.stock && (
+                      <p>{money(price(line.product))}</p>
+                      {line.quantity > line.product.stock && (
                         <p className="text-danger">
-                          Stock actual: {l.product.stock}. Ajusta la cantidad.
+                          Stock actual: {line.product.stock}. Ajusta la cantidad.
                         </p>
                       )}
                       <Quantity
-                        value={l.quantity}
-                        onChange={(q) => change(l.id, q)}
-                        max={l.product.stock}
+                        value={line.quantity}
+                        onChange={(quantity) => change(line.id, quantity)}
+                        max={line.product.stock}
                       />
                     </div>
-                    <strong>{money(price(l.product) * l.quantity)}</strong>
+                    <strong>
+                      {money(price(line.product) * line.quantity)}
+                    </strong>
                   </>
                 ) : (
-                  <p>Este producto ya no está disponible.</p>
+                  <p>Este producto ya no está disponible en el backend.</p>
                 )}
                 <button
                   className="icon-button"
                   aria-label="Eliminar del carrito"
-                  onClick={() => {
-                    try {
-                      db.setCart(lines.filter((x) => x.id !== l.id));
-                    } catch (e) {
-                      setNotice(e.message);
-                    }
-                  }}
+                  onClick={() => remove(line.id)}
                 >
                   🗑️
                 </button>
@@ -105,7 +180,14 @@ export function Cart() {
               <b>Total de productos</b>
               <strong>{money(total)}</strong>
             </p>
-            <Link className="btn btn-lime w-100" to="/checkout">
+            <Link
+              className={`btn btn-lime w-100${canCheckout ? "" : " disabled"}`}
+              to={canCheckout ? "/checkout" : "#"}
+              aria-disabled={!canCheckout}
+              onClick={(event) => {
+                if (!canCheckout) event.preventDefault();
+              }}
+            >
               Continuar al checkout &rarr;
             </Link>
             <small>

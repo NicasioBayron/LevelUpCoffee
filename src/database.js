@@ -1,23 +1,11 @@
-import { seedProducts } from "./products.js";
 import { branches } from "./locations.js";
 
-const KEY = "levelup.database.v2";
-// Cuenta pública para la presentación académica. No usar en producción.
-const demoAdmin = () => ({
-  id: "levelup-admin-demo-v1",
-  nombre: "Admin Demo",
-  correo: "admin@levelup.test",
-  role: "admin",
-  salt: "levelup-admin-demo-v1",
-  password: "02da4d3d039aa28e30a8b77140170d8c3654ef4d18ccf69ace1b1c8a0f954a65",
-});
+// El backend es la fuente de verdad. El navegador conserva únicamente el carrito.
+const KEY = "levelup.cart.v3";
 const initial = () => ({
-  demoAdminSeeded: true,
-  products: seedProducts,
-  categories: [...new Set(seedProducts.map((p) => p.categoria))].map(
-    (nombre, i) => ({ id: i + 1, nombre }),
-  ),
-  users: [demoAdmin()],
+  products: [],
+  categories: [],
+  users: [],
   orders: [],
   messages: [],
   reservations: [],
@@ -44,15 +32,6 @@ function read() {
       ].every((k) => Array.isArray(data[k]))
     )
       throw Error();
-    // Incorporar la cuenta una sola vez a bases anteriores sin borrar sus datos.
-    if (!data.demoAdminSeeded) {
-      if (!data.users.some((u) => u.id === "levelup-admin-demo-v1" ||
-          u.correo?.trim().toLowerCase() === "admin@levelup.test")) {
-        data.users.push(demoAdmin());
-      }
-      data.demoAdminSeeded = true;
-      localStorage.setItem(KEY, JSON.stringify(data));
-    }
     return data;
   } catch {
     throw new Error(

@@ -1,12 +1,14 @@
 import React, { useState } from "react";
-import { db } from "../database";
+import { authService, orderService } from "../api/services";
+import { useEffect } from "react";
 import { useShop } from "../Store.jsx";
 import { PageTitle, Empty, Field, ErrorMessage } from "../components";
 import { Receipt } from "./PaymentResult";
 
 export function Profile() {
-  const { user, setNotice } = useShop(),
-    [error, setError] = useState("");
+  const { user, setNotice } = useShop(), [error, setError] = useState(""), [orders, setOrders] = useState([]);
+
+  useEffect(() => { if (user) orderService.getAll(user.id).then(setOrders).catch(() => setOrders([])); }, [user]);
 
   if (!user)
     return (
@@ -20,20 +22,18 @@ export function Profile() {
       </main>
     );
 
-  function save(e) {
+  async function save(e) {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.currentTarget));
     try {
       if (f.nombre.trim().length < 3) throw Error("Ingresa un nombre válido.");
-      db.update("users", user.id, f);
+      await authService.update(user.id, f);
       setNotice("Perfil actualizado.");
       setError("");
     } catch (err) {
       setError(err.message);
     }
   }
-
-  const orders = db.list("orders").filter((o) => o.userId === user.id);
 
   return (
     <main className="container section">

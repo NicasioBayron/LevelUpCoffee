@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { db } from "./database";
+import { authService } from "./api/services";
 
 const Context = createContext();
 
 export function Provider({ children }) {
   const [version, setVersion] = useState(0),
     [notice, setNotice] = useState("");
-  const [session, setSession] = useState(() =>
-    sessionStorage.getItem("levelup.user"),
-  );
+  const [session, setSession] = useState(() => sessionStorage.getItem("levelup.user"));
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const update = () => setVersion((v) => v + 1);
@@ -21,21 +21,31 @@ export function Provider({ children }) {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    if (!session) { setUser(null); return () => { active = false; }; }
+    authService.getById(session).then((data) => active && setUser(data)).catch(() => {
+      sessionStorage.removeItem("levelup.user"); setSession(null); setUser(null);
+    });
+    return () => { active = false; };
+  }, [session]);
+
+  useEffect(() => {
     if (notice) {
       const t = setTimeout(() => setNotice(""), 4000);
       return () => clearTimeout(t);
     }
   }, [notice]);
 
-  const user = db.get("users", session);
-
-  const login = (id) => {
-    sessionStorage.setItem("levelup.user", id);
-    setSession(id);
+  const login = (loggedUser) => {
+    sessionStorage.setItem("levelup.user", String(loggedUser.id));
+    setUser(loggedUser);
+    setSession(String(loggedUser.id));
   };
 
   const logout = () => {
     sessionStorage.removeItem("levelup.user");
+    sessionStorage.removeItem("levelup.token");
+    setUser(null);
     setSession(null);
   };
 

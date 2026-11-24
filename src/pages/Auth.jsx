@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { db, passwordHash, validRun } from "../database";
+import { validRun } from "../database";
+import { authService } from "../api/services";
 import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
 import { Field, ErrorMessage } from "../components";
@@ -19,8 +20,7 @@ export function Auth({ register = false }) {
     const f = Object.fromEntries(new FormData(e.currentTarget));
     f.correo = f.correo.trim().toLowerCase();
     try {
-      const users = db.list("users");
-      let user = users.find((u) => u.correo === f.correo);
+      let user;
       if (register) {
         if (!f.nombre.trim() || f.nombre.trim().length < 3)
           throw Error("Ingresa tu nombre completo.");
@@ -30,24 +30,19 @@ export function Auth({ register = false }) {
         if (f.password !== f.confirm)
           throw Error("Las contraseñas no coinciden.");
         if (user) throw Error("Ese correo ya está registrado.");
-        const salt = crypto.randomUUID();
-        user = db.create("users", {
+        user = await authService.registrar({
           nombre: f.nombre.trim(),
           correo: f.correo,
-          run: f.run,
-          role: "cliente",
-          salt,
-          password: await passwordHash(f.password, salt),
+          password: f.password,
+          rol: "USER",
           direccion: f.direccion.trim(),
           comuna: f.comuna.trim(),
           telefono: f.telefono.trim(),
         });
-      } else if (
-        !user ||
-        user.password !== (await passwordHash(f.password, user.salt))
-      )
-        throw Error("Correo o contraseña incorrectos.");
-      login(user.id);
+      } else {
+        user = await authService.login({ correo: f.correo, password: f.password });
+      }
+      login(user);
       const next = params.get("next");
       navigate(
         next?.startsWith("/") && !next.startsWith("//") ? next : "/perfil",

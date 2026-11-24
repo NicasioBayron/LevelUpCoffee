@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { db } from "../database";
+import { communityService } from "../api/services";
+import { useEffect } from "react";
 import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
 
-const events = [
+const fallbackEvents = [
   {
     id: "mesa",
     title: "Noche de juegos de mesa",
@@ -30,22 +31,20 @@ const events = [
 
 export function Events() {
   const { user, setNotice } = useShop();
-  const [selected, setSelected] = useState(""),
-    [error, setError] = useState("");
+  const [selected, setSelected] = useState(null), [events, setEvents] = useState([]),
+    [error, setError] = useState(""), [loading, setLoading] = useState(true);
 
-  function submit(e) {
+  useEffect(() => {
+    communityService.getEventos().then(setEvents).catch(() => setEvents(fallbackEvents)).finally(() => setLoading(false));
+  }, []);
+
+  async function submit(e) {
     e.preventDefault();
     try {
       const f = Object.fromEntries(new FormData(e.currentTarget));
       if (!f.nombre.trim()) throw Error("Ingresa tu nombre.");
-      db.create("reservations", {
-        ...f,
-        event: selected,
-        userId: user?.id || null,
-        date: new Date().toISOString(),
-        status: "Por confirmar",
-      });
-      setSelected("");
+      await communityService.crearReserva({ eventoId: selected.id, usuarioId: user?.id || null, nombreContacto: f.nombre, correoContacto: f.correo, personas: Number(f.personas) });
+      setSelected(null);
       setNotice(
         "Solicitud guardada. La reserva queda pendiente de confirmación.",
       );
@@ -60,7 +59,7 @@ export function Events() {
         Propuestas de encuentros de nuestra comunidad. Solicita una reserva y
         coordinaremos fecha y disponibilidad.
       </PageTitle>
-      <div className="events-grid">
+      {loading ? <p role="status">Cargando eventos…</p> : <div className="events-grid">
         {events.map((e) => (
           <article className="event-card" key={e.id}>
             <img src={imageUrl("/img/" + e.image)} alt={e.title} />
@@ -72,7 +71,7 @@ export function Events() {
               <button
                 className="btn btn-outline-light mt-3"
                 onClick={() => {
-                  setSelected(e.id);
+                  setSelected(e);
                   setError("");
                 }}
               >
@@ -81,10 +80,10 @@ export function Events() {
             </div>
           </article>
         ))}
-      </div>
+      </div>}
       {selected && (
         <form className="panel mt-4" onSubmit={submit}>
-          <h2>Reserva · {events.find((e) => e.id === selected)?.title}</h2>
+          <h2>Reserva · {selected.titulo || selected.title}</h2>
           <div className="form-grid">
             <Field
               label="Tu nombre"
