@@ -13,6 +13,7 @@ import {
   Auth,
   Profile,
   Events,
+  Torneo,
   Contact,
   Terms,
 } from "./pages";
@@ -52,6 +53,7 @@ export function App() {
           <Route path="/registro" element={<Auth register />} />
           <Route path="/perfil" element={<Profile />} />
           <Route path="/eventos" element={<Events />} />
+          <Route path="/torneo/:id" element={<Torneo />} />
           <Route path="/contacto" element={<Contact />} />
           <Route path="/terminos" element={<Terms />} />
           <Route path="/nosotros" element={<About />} />

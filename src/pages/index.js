@@ -12,3 +12,4 @@ export { Contact } from "./Contact";
 export { Terms } from "./Terms";
 export { About } from "./About";
 export { Blog } from "./Blog";
+export { Torneo } from "./Torneo";
