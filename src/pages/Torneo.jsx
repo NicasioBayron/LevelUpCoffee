@@ -1,13 +1,14 @@
 
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useParams, Link } from "react-router-dom";
+import { useShop } from "../Store.jsx";
 
 export function Torneo() {
   const { id } = useParams();
   const [activeSection, setActiveSection] = useState("informacion");
 const [showRegistration, setShowRegistration] = useState(false);
 const [registered, setRegistered] = useState(false);
+const { user, setNotice } = useShop();
 
   // Datos temporales para probar la página
   const tournament = {
@@ -44,12 +45,85 @@ const [registered, setRegistered] = useState(false);
 
           <p>{tournament.description}</p>
 
-          <button className="btn btn-lime">
-            Inscribirme al campeonato
-          </button>
+          <button
+  className="btn btn-lime"
+  onClick={() => {
+    if (!user) {
+      setNotice("Debes iniciar sesión para inscribirte.");
+      return;
+    }
+
+    if (registered) {
+      setNotice("Ya estás inscrito en este campeonato.");
+      return;
+    }
+
+    setShowRegistration(true);
+  }}
+>
+  Inscribirme al campeonato
+</button>
         </div>
 
       </section>
+
+      {showRegistration && (
+  <div className="registration-overlay">
+    <div className="registration-modal">
+      <button
+        className="registration-close"
+        onClick={() => setShowRegistration(false)}
+      >
+        ×
+      </button>
+
+      <h2>Inscripción al campeonato</h2>
+
+      <p>
+        Estás a punto de inscribirte en:
+      </p>
+
+      <h3>{tournament.title}</h3>
+
+      <div className="registration-user">
+        <p>
+          <strong>Jugador:</strong>{" "}
+          {user?.nombre || user?.name || "Usuario"}
+        </p>
+
+        <p>
+          <strong>Correo:</strong>{" "}
+          {user?.email || "Correo de tu cuenta"}
+        </p>
+      </div>
+
+      <p className="registration-warning">
+        Recuerda que al confirmar tu inscripción estarás
+        participando oficialmente en este campeonato.
+      </p>
+
+      <div className="registration-actions">
+        <button
+          className="registration-cancel"
+          onClick={() => setShowRegistration(false)}
+        >
+          Cancelar
+        </button>
+
+        <button
+          className="btn btn-lime"
+          onClick={() => {
+            setRegistered(true);
+            setShowRegistration(false);
+            setNotice("¡Tu inscripción fue registrada!");
+          }}
+        >
+          Confirmar inscripción
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Información rápida */}
       <section className="tournament-info-grid">
