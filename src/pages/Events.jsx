@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import { communityService } from "../api/services";
 import { useEffect } from "react";
 import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
+import { TournamentCard } from "../components/TournamentCard";
 
 const fallbackEvents = [
   {
@@ -37,10 +37,10 @@ const tournaments = [
     game: "Valorant",
     image: "valorant.png",
     date: "15 de diciembre de 2026",
-    participants: "8 / 16",
+    registered: 8,
+    maxParticipants: 16,
     status: "Inscripciones abiertas",
-    description:
-      "Compite con otros jugadores y demuestra tus habilidades en este campeonato.",
+    description: "Compite con otros jugadores y demuestra tus habilidades.",
   },
   {
     id: 2,
@@ -48,10 +48,10 @@ const tournaments = [
     game: "Mario Kart",
     image: "mariokart.png",
     date: "20 de diciembre de 2026",
-    participants: "5 / 12",
+    registered: 5,
+    maxParticipants: 12,
     status: "Inscripciones abiertas",
-    description:
-      "Compite en emocionantes carreras y demuestra quién es el mejor piloto.",
+    description: "Compite en emocionantes carreras y demuestra quién es el mejor piloto.",
   },
 ];
 
@@ -61,8 +61,14 @@ export function Events() {
     [error, setError] = useState(""), [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    communityService.getEventos().then(setEvents).catch(() => setEvents(fallbackEvents)).finally(() => setLoading(false));
-  }, []);
+  communityService.getEventos()
+    .then((data) => {
+      console.log("EVENTOS RECIBIDOS:", data);
+      setEvents(data);
+    })
+    .catch(() => setEvents(fallbackEvents))
+    .finally(() => setLoading(false));
+}, []);
 
   async function submit(e) {
     e.preventDefault();
@@ -81,50 +87,6 @@ export function Events() {
 
   return (
     <main className="container section">
-      <section className="tournaments-section">
-  <div className="tournaments-heading">
-    <span className="eyebrow">COMPETENCIA LEVEL UP</span>
-    <h1>Campeonatos</h1>
-    <p>
-      Participa en nuestros torneos, enfrenta nuevos desafíos
-      y demuestra tus habilidades.
-    </p>
-  </div>
-
-  <div className="tournaments-grid">
-    {tournaments.map((tournament) => (
-      <article className="tournament-card" key={tournament.id}>
-        <img
-          src={imageUrl("/img/" + tournament.image)}
-          alt={tournament.game}
-        />
-
-        <div className="tournament-card-content">
-          <span className="tournament-status">
-            {tournament.status}
-          </span>
-
-          <h2>{tournament.title}</h2>
-
-          <p>{tournament.description}</p>
-
-          <div className="tournament-card-info">
-            <span>🎮 {tournament.game}</span>
-            <span>📅 {tournament.date}</span>
-            <span>👥 {tournament.participants} jugadores</span>
-          </div>
-
-          <Link
-            to={`/torneo/${tournament.id}`}
-            className="btn btn-lime tournament-view-button"
-          >
-            Ver campeonato →
-          </Link>
-        </div>
-      </article>
-    ))}
-  </div>
-</section>
       <PageTitle title="Encuentra a tu equipo.">
         Propuestas de encuentros de nuestra comunidad. Solicita una reserva y
         coordinaremos fecha y disponibilidad.
@@ -151,6 +113,26 @@ export function Events() {
           </article>
         ))}
       </div>}
+            {/* CAMPEONATOS */}
+      <section className="tournaments-section">
+        <div className="tournaments-heading">
+          <span className="eyebrow">COMPETENCIA LEVEL UP</span>
+          <h2>Campeonatos</h2>
+          <p>
+            Participa en nuestros torneos, enfrenta nuevos desafíos
+            y demuestra tus habilidades.
+          </p>
+        </div>
+
+        <div className="tournaments-grid">
+          {tournaments.map((tournament) => (
+            <TournamentCard
+              key={tournament.id}
+              tournament={tournament}
+            />
+          ))}
+        </div>
+      </section>
       {selected && (
         <form className="panel mt-4" onSubmit={submit}>
           <h2>Reserva · {selected.titulo || selected.title}</h2>
