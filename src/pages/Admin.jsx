@@ -1,27 +1,349 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useShop } from "../Store.jsx";
-import { productService, authService, orderService, communityService } from "../api/services";
+import {
+  productService,
+  authService,
+  orderService,
+  communityService,
+} from "../api/services";
+import { createTournament } from "../data/tournaments";
 import { PageTitle, ErrorMessage } from "../components";
 import { money, price } from "../database";
 
-const tabs = [["products", "Productos"], ["users", "Usuarios"], ["orders", "Órdenes"], ["messages", "Mensajes"], ["reservations", "Reservas"]];
+const TABS = [
+  ["products", "Productos"],
+  ["users", "Usuarios"],
+  ["orders", "Órdenes"],
+  ["messages", "Mensajes"],
+  ["reservations", "Reservas"],
+  ["tournaments", "Crear torneo"],
+];
+
+const INITIAL_FORM = {
+  title: "",
+  game: "",
+  mode: "LIGUILLA",
+  maxParticipants: 8,
+  date: "",
+  image: "valorant.png",
+};
+
+const INITIAL_DATA = {
+  products: [],
+  users: [],
+  orders: [],
+  messages: [],
+  reservations: [],
+};
 
 export function Admin() {
   const { user, setNotice } = useShop();
-  const [tab, setTab] = useState("products"), [data, setData] = useState({ products: [], users: [], orders: [], messages: [], reservations: [] }), [error, setError] = useState("");
-  const load = async () => {
+  const [tab, setTab] = useState("products");
+  const [data, setData] = useState(INITIAL_DATA);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState(INITIAL_FORM);
+
+  const isAdmin = user?.rol === "ADMIN" || user?.role === "admin";
+
+  const load = useCallback(async () => {
     try {
-      const [products, users, orders, messages, reservations] = await Promise.all([productService.getAll(), authService.getAll(), orderService.getAll(), communityService.getMensajes(), communityService.getReservas()]);
+      setData(
+        Object.fromEntries(
+          ["products", "users", "orders", "messages", "reservations"].map(
+            (key) => [key, []]
+          )
+        )
+      );
+
+      const [products, users, orders, messages, reservations] =
+        await Promise.all([
+          productService.getAll(),
+          authService.getAll(),
+          orderService.getAll(),
+          communityService.getMensajes(),
+          communityService.getReservas(),
+        ]);
+
       setData({ products, users, orders, messages, reservations });
-    } catch (e) { setError(e.response?.data?.error || e.message); }
+    } catch (e) {
+      setError(e.response?.data?.error || e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) load();
+  }, [isAdmin, load]);
+
+  if (!user || !isAdmin) {
+    return (
+      <main className="container section">
+        <PageTitle title="Administración" />
+        <p>Necesitas una cuenta administradora para entrar.</p>
+        <Link className="btn btn-lime" to="/login?next=/admin">
+          Ingresar como administrador
+        </Link>
+      </main>
+    );
+  }
+
+  const updateStatus = async (action) => {
+    try {
+      await action;
+      await load();
+      setNotice("Estado actualizado.");
+    } catch (e) {
+      setError(e.response?.data?.error || e.message);
+    }
   };
-  useEffect(() => { if (user) load(); }, [user]);
-  if (user?.rol !== "ADMIN" && user?.role !== "admin") return <main className="container section"><PageTitle title="Administración" /><p>Necesitas una cuenta administradora para entrar.</p></main>;
-  const updateOrder = async (id, estado) => { try { await orderService.actualizarEstado(id, estado); await load(); setNotice("Estado actualizado."); } catch (e) { setError(e.message); } };
-  const updateMessage = async (id, estado) => { try { await communityService.actualizarEstadoMensaje(id, estado); await load(); } catch (e) { setError(e.message); } };
-  const updateReservation = async (id, estado) => { try { await communityService.actualizarEstadoReserva(id, estado); await load(); } catch (e) { setError(e.message); } };
-  return <main className="container section"><PageTitle eyebrow="LEVEL UP / CENTRO DE CONTROL" title="Administración conectada.">Los datos se cargan desde tus microservicios.</PageTitle><div className="admin-grid"><aside className="admin-nav">{tabs.map(([id, label]) => <button key={id} className={tab === id ? "selected" : ""} onClick={() => setTab(id)}>{label}</button>)}<Link to="/perfil">Mi perfil →</Link></aside><section className="admin-content"><ErrorMessage message={error} />{tab === "products" && <List title="Productos" items={data.products} render={(p) => <><strong>{p.nombre}</strong><span>{money(price(p))} · stock {p.stock}</span></>} />}{tab === "users" && <List title="Usuarios" items={data.users} render={(u) => <><strong>{u.nombre}</strong><span>{u.correo} · {u.rol || u.role}</span></>} />}{tab === "orders" && <List title="Órdenes" items={data.orders} render={(o) => <><strong>{o.numero || o.number || `#${o.id}`}</strong><span>{o.nombreCliente || o.customer?.nombre} · {money(o.total || 0)}</span><select className="form-select mt-2" value={o.estado || o.status || "PENDIENTE"} onChange={(e) => updateOrder(o.id, e.target.value)}><option>PENDIENTE</option><option>CONFIRMADA</option><option>EN_PREPARACION</option><option>LISTA</option><option>ENTREGADA</option><option>CANCELADA</option></select></>} />}{tab === "messages" && <List title="Mensajes" items={data.messages} render={(m) => <><strong>{m.asunto}</strong><span>{m.nombre} · {m.correo}<br />{m.mensaje}</span><select className="form-select mt-2" value={m.estado} onChange={(e) => updateMessage(m.id, e.target.value)}><option>NUEVO</option><option>REVISADO</option></select></>} />}{tab === "reservations" && <List title="Reservas" items={data.reservations} render={(r) => <><strong>{r.evento?.titulo || `Evento #${r.eventoId}`}</strong><span>{r.nombreContacto} · {r.personas} personas</span><select className="form-select mt-2" value={r.estado} onChange={(e) => updateReservation(r.id, e.target.value)}><option>PENDIENTE</option><option>CONFIRMADA</option><option>CANCELADA</option></select></>} />}</section></div></main>;
+
+  const handleCreateTournament = () => {
+    if (!form.title || !form.game || !form.date || !form.image) {
+      return setError("Completa todos los campos del torneo.");
+    }
+
+    createTournament(form);
+    window.dispatchEvent(new Event("levelup:tournaments-updated"));
+    setForm(INITIAL_FORM);
+    setNotice("Torneo creado y publicado en Comunidad.");
+  };
+
+  const currentTabLabel = TABS.find((x) => x[0] === tab)?.[1];
+  const currentItems = data[tab] || [];
+
+  return (
+    <main className="container section">
+      <PageTitle
+        eyebrow="LEVEL UP / CENTRO DE CONTROL"
+        title="Administración conectada."
+      >
+        Los datos se cargan desde tus microservicios.
+      </PageTitle>
+
+      <div className="admin-grid">
+        <aside className="admin-nav">
+          {TABS.map(([id, label]) => (
+            <button
+              type="button"
+              className={tab === id ? "selected" : ""}
+              key={id}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+          <Link to="/perfil">Mi perfil &rarr;</Link>
+        </aside>
+
+        <section className="admin-content">
+          <ErrorMessage message={error} />
+
+          {tab === "tournaments" ? (
+            <TournamentForm
+              value={form}
+              onChange={setForm}
+              onCreate={handleCreateTournament}
+            />
+          ) : (
+            <>
+              <h2>{currentTabLabel}</h2>
+
+              {currentItems.map((item) => (
+                <article className="panel mb-3" key={item.id}>
+                  {tab === "products" && (
+                    <>
+                      <strong>{item.nombre}</strong>
+                      <p>
+                        {money(price(item))} &middot; stock {item.stock}
+                      </p>
+                    </>
+                  )}
+
+                  {tab === "users" && (
+                    <>
+                      <strong>{item.nombre}</strong>
+                      <p>
+                        {item.correo} &middot; {item.rol}
+                      </p>
+                    </>
+                  )}
+
+                  {tab === "orders" && (
+                    <>
+                      <strong>{item.numero || `#${item.id}`}</strong>
+                      <p>
+                        {item.nombreCliente} &middot; {money(item.total || 0)}
+                      </p>
+                      <select
+                        className="form-select"
+                        value={item.estado}
+                        onChange={(e) =>
+                          updateStatus(
+                            orderService.actualizarEstado(item.id, e.target.value)
+                          )
+                        }
+                      >
+                        <option value="PENDIENTE">PENDIENTE</option>
+                        <option value="CONFIRMADA">CONFIRMADA</option>
+                        <option value="EN_PREPARACION">EN_PREPARACION</option>
+                        <option value="ENTREGADA">ENTREGADA</option>
+                        <option value="CANCELADA">CANCELADA</option>
+                      </select>
+                    </>
+                  )}
+
+                  {tab === "messages" && (
+                    <>
+                      <strong>{item.asunto}</strong>
+                      <p>
+                        {item.nombre} &middot; {item.mensaje}
+                      </p>
+                      <select
+                        className="form-select"
+                        value={item.estado}
+                        onChange={(e) =>
+                          updateStatus(
+                            communityService.actualizarEstadoMensaje(
+                              item.id,
+                              e.target.value
+                            )
+                          )
+                        }
+                      >
+                        <option value="NUEVO">NUEVO</option>
+                        <option value="REVISADO">REVISADO</option>
+                      </select>
+                    </>
+                  )}
+
+                  {tab === "reservations" && (
+                    <>
+                      <strong>{item.evento?.titulo || "Reserva"}</strong>
+                      <p>
+                        {item.nombreContacto} &middot; {item.personas} personas
+                      </p>
+                      <select
+                        className="form-select"
+                        value={item.estado}
+                        onChange={(e) =>
+                          updateStatus(
+                            communityService.actualizarEstadoReserva(
+                              item.id,
+                              e.target.value
+                            )
+                          )
+                        }
+                      >
+                        <option value="PENDIENTE">PENDIENTE</option>
+                        <option value="CONFIRMADA">CONFIRMADA</option>
+                        <option value="CANCELADA">CANCELADA</option>
+                      </select>
+                    </>
+                  )}
+                </article>
+              ))}
+
+              {!currentItems.length && <p className="muted">Sin registros.</p>}
+            </>
+          )}
+        </section>
+      </div>
+    </main>
+  );
 }
 
-function List({ title, items, render }) { return <><div className="section-heading"><h2>{title}</h2><span>{items.length} registros</span></div>{items.length ? items.map((item) => <article className="panel mb-3" key={item.id}>{render(item)}</article>) : <p className="muted">Sin registros.</p>}</> }
+function TournamentForm({ value, onChange, onCreate }) {
+  const set = (key, next) => onChange({ ...value, [key]: next });
+
+  return (
+    <form
+      className="panel"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onCreate();
+      }}
+    >
+      <h2>Crear torneo</h2>
+      <p className="muted">El torneo aparecerá inmediatamente en Comunidad.</p>
+
+      <div className="form-grid">
+        <label className="field">
+          Nombre del torneo:  
+          <small> Ejemplo: Level Up Valorant Cup</small>
+          <input
+            className="form-control"
+            value={value.title}
+            onChange={(e) => set("title", e.target.value)}
+            required
+          />
+        </label>
+
+        <label className="field">
+          Juego:  
+          <small> Ejemplo: Valorant, Mario Kart o Catan</small>
+          <input
+            className="form-control"
+            value={value.game}
+            onChange={(e) => set("game", e.target.value)}
+            required
+          />
+        </label>
+
+        <label className="field">
+          Modalidad:  
+          <small> Liguilla = todos contra todos; eliminación = cruces por rondas.</small>
+          <select
+            className="form-select"
+            value={value.mode}
+            onChange={(e) => set("mode", e.target.value)}
+          >
+            <option value="LIGUILLA">Liguilla</option>
+            <option value="ELIMINACION">Fixture de eliminación</option>
+          </select>
+        </label>
+
+        <label className="field">
+          Máximo de jugadores:  
+          <small> Usa un número entre 2 y 32.</small>
+          <input
+            className="form-control"
+            type="number"
+            min="2"
+            max="32"
+            value={value.maxParticipants}
+            onChange={(e) => set("maxParticipants", e.target.value)}
+            required
+          />
+        </label>
+
+        <label className="field">
+          Fecha:  
+          <small> Día en que se realizará el torneo.</small>
+          <input
+            className="form-control"
+            type="date"
+            value={value.date}
+            onChange={(e) => set("date", e.target.value)}
+            required
+          />
+        </label>
+
+        <label className="field">
+          Portada / imagen:  
+          <small>
+             Nombre de un archivo dentro de public/img, por ejemplo valorant.png.
+          </small>
+          <input
+            className="form-control"
+            value={value.image}
+            onChange={(e) => set("image", e.target.value)}
+            placeholder="valorant.png"
+            required
+          />
+        </label>
+      </div>
+
+      <button className="btn btn-lime mt-3">Crear torneo</button>
+    </form>
+  );
+}

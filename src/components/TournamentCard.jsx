@@ -2,6 +2,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { imageUrl } from "../imageUrl";
+import { formatTournamentDate } from "../data/tournaments";
 
 export function TournamentCard({ tournament }) {
   const progress = Math.min(
@@ -13,7 +14,7 @@ export function TournamentCard({ tournament }) {
     <article className="tournament-card">
       <div className="tournament-card-image">
         <img
-          src={imageUrl(`/img/${tournament.image}`)}
+          src={imageUrl(tournament.image?.startsWith("/") ? tournament.image : `/img/${tournament.image}`)}
           alt={tournament.game}
         />
 
@@ -34,7 +35,7 @@ export function TournamentCard({ tournament }) {
         </p>
 
         <div className="tournament-card-info">
-          <span>📅 {tournament.date}</span>
+          <span>📅 {formatTournamentDate(tournament.date)}</span>
           <span>
             👥 {tournament.registered} / {tournament.maxParticipants} jugadores
           </span>

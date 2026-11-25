@@ -1,10 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import gsap from "gsap";
 import { productService } from "../api/services";
 import { imageUrl } from "../imageUrl";
 import { ErrorMessage, ProductCard } from "../components";
 
 export function Home() {
+  const heroContentRef = useRef(null);
+
   const [result, setResult] = useState({
     products: [],
     loading: true,
@@ -14,25 +17,34 @@ export function Home() {
 
   useEffect(() => {
     let active = true;
-    productService
-      .getAll({ tipo: "juego" })
-      .then((products) => {
-        if (active) setResult({ products, loading: false, error: "" });
-      })
-      .catch((error) => {
-        if (active) {
-          setResult({
-            products: [],
-            loading: false,
-            error: error.response?.data?.message || error.message,
-          });
-        }
-      });
-
-    return () => {
-      active = false;
-    };
+    setResult((current) => ({ ...current, loading: true, error: "" }));
+    productService.getAll()
+      .then((products) => active && setResult({ products, loading: false, error: "" }))
+      .catch((error) => active && setResult({ products: [], loading: false, error: error.response?.data?.error || error.message || "No se pudieron cargar los productos." }));
+    return () => { active = false; };
   }, [retry]);
+
+useEffect(() => {
+  const el = heroContentRef.current;
+  console.log("ANIMANDO HERO -> ref:", el, "gsap:", gsap?.version);
+  if (!el) return;
+
+  const ctx = gsap.context(() => {
+    gsap.fromTo(
+  el.children,
+  { y: 80, opacity: 0 },
+  {
+    y: 0,
+    opacity: 1,
+    duration: 2.2,
+    stagger: 0.2,
+    ease: "power3.out",
+  }
+);
+  }, heroContentRef);
+
+  return () => ctx.revert();
+}, []);
 
   return (
     <>
@@ -43,7 +55,7 @@ export function Home() {
             "--hero-image": `url("${imageUrl("/img/nosotros1.png")}")`,
           }}
         />
-        <div className="container hero-content">
+        <div ref={heroContentRef} className="container hero-content">
           <div className="eyebrow">
             <span className="live-dot" /> TU PUNTO DE ENCUENTRO
           </div>

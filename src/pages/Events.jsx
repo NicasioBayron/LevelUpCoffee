@@ -5,6 +5,7 @@ import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
 import { TournamentCard } from "../components/TournamentCard";
+import { getTournaments } from "../data/tournaments";
 
 const fallbackEvents = [
   {
@@ -30,41 +31,29 @@ const fallbackEvents = [
   },
 ];
 
-const tournaments = [
-  {
-    id: 1,
-    title: "Level Up Valorant Cup",
-    game: "Valorant",
-    image: "valorant.png",
-    date: "15 de diciembre de 2026",
-    registered: 8,
-    maxParticipants: 16,
-    status: "Inscripciones abiertas",
-    description: "Compite con otros jugadores y demuestra tus habilidades.",
-  },
-  {
-    id: 2,
-    title: "Mario Kart Championship",
-    game: "Mario Kart",
-    image: "mariokart.png",
-    date: "20 de diciembre de 2026",
-    registered: 5,
-    maxParticipants: 12,
-    status: "Inscripciones abiertas",
-    description: "Compite en emocionantes carreras y demuestra quién es el mejor piloto.",
-  },
-];
-
 export function Events() {
   const { user, setNotice } = useShop();
   const [selected, setSelected] = useState(null), [events, setEvents] = useState([]),
     [error, setError] = useState(""), [loading, setLoading] = useState(true);
+  const [tournaments, setTournaments] = useState(getTournaments());
+
+  useEffect(() => {
+    const refresh = () => setTournaments(getTournaments());
+    window.addEventListener("levelup:tournaments-updated", refresh);
+    return () => window.removeEventListener("levelup:tournaments-updated", refresh);
+  }, []);
 
   useEffect(() => {
   communityService.getEventos()
     .then((data) => {
       console.log("EVENTOS RECIBIDOS:", data);
-      setEvents(data);
+      setEvents(data.map((event) => ({
+        ...event,
+        title: event.titulo,
+        text: event.descripcion,
+        image: event.imagen || "catan.png",
+        tag: "COMUNIDAD LEVEL UP",
+      })));
     })
     .catch(() => setEvents(fallbackEvents))
     .finally(() => setLoading(false));
@@ -94,7 +83,7 @@ export function Events() {
       {loading ? <p role="status">Cargando eventos…</p> : <div className="events-grid">
         {events.map((e) => (
           <article className="event-card" key={e.id}>
-            <img src={imageUrl("/img/" + e.image)} alt={e.title} />
+            <img src={imageUrl(e.image.startsWith("/") ? e.image : "/img/" + e.image)} alt={e.title} />
             <div>
               <div className="eyebrow">{e.tag}</div>
               <h2>{e.title}</h2>

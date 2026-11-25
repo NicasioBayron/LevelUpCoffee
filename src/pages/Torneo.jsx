@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useShop } from "../Store.jsx";
+import { getTournaments, formatTournamentDate } from "../data/tournaments";
 
 export function Torneo() {
   const { id } = useParams();
@@ -9,6 +10,7 @@ const [showRegistration, setShowRegistration] = useState(false);
 const [registered, setRegistered] = useState(false);
 const [participantCount, setParticipantCount] = useState(0);
 const { user, setNotice } = useShop();
+  const isAdmin = user?.rol === "ADMIN" || user?.role === "admin";
 
   // Datos de los campeonatos
 const tournaments = {
@@ -41,7 +43,7 @@ const tournaments = {
   },
 };
 
-const tournament = tournaments[id];
+const tournament = tournaments[id] || getTournaments().find((item) => String(item.id) === String(id));
 const sampleParticipants = {
   1: [
     "Shadow",
@@ -63,7 +65,7 @@ const sampleParticipants = {
 };
 
 const participants = [
-  ...sampleParticipants[id],
+  ...(sampleParticipants[id] || tournament?.players || []),
   ...(registered
     ? [user?.nombre || user?.name || "Jugador"]
     : []),
@@ -177,11 +179,11 @@ if (!tournament) {
         <button
           className="btn btn-lime"
           onClick={() => {
-  setRegistered(true);
-  setParticipantCount((count) => count + 1);
-  setShowRegistration(false);
-  setNotice("¡Tu inscripción fue registrada!");
-}}
+            setRegistered(true);
+            setParticipantCount((count) => count + 1);
+            setShowRegistration(false);
+            setNotice("¡Tu inscripción fue registrada!");
+          }}
         >
           Confirmar inscripción
         </button>
@@ -200,7 +202,7 @@ if (!tournament) {
 
         <article className="tournament-info-card">
           <span>📅 Fecha</span>
-          <h3>{tournament.date}</h3>
+          <h3>{formatTournamentDate(tournament.date)}</h3>
         </article>
 
         <article className="tournament-info-card">
@@ -229,19 +231,19 @@ if (!tournament) {
             Información
           </button>
 
-          <button
+          {isAdmin && <button
             className={activeSection === "participantes" ? "active" : ""}
             onClick={() => setActiveSection("participantes")}
           >
             Participantes
-          </button>
+          </button>}
 
-          <button
+          {isAdmin && <button
             className={activeSection === "fixture" ? "active" : ""}
             onClick={() => setActiveSection("fixture")}
           >
             Fixture
-          </button>
+          </button>}
 
         </div>
 
@@ -252,28 +254,28 @@ if (!tournament) {
               <h2>Información del campeonato</h2>
 
               <p>
-                <strong>Modalidad:</strong> {tournament.modality}
+                <strong>Modalidad: </strong> {tournament.modality}
               </p>
 
               <p>
-                <strong>Fecha:</strong> {tournament.date}
+                <strong>Fecha: </strong> {formatTournamentDate(tournament.date)}
               </p>
 
               <p>
-                <strong>Cupos:</strong> {tournament.maxParticipants} jugadores
+                <strong>Cupos: </strong> {tournament.maxParticipants} jugadores
               </p>
 
               <p>
-                <strong>Inscritos:</strong> {participantCount} jugadores
+                <strong>Inscritos: </strong> {participantCount} jugadores
               </p>
 
               <p>
-                <strong>Premio:</strong> {tournament.prize}
+                <strong>Premio: </strong> {tournament.prize}
               </p>
             </div>
           )}
 
-          {activeSection === "participantes" && (
+          {isAdmin && activeSection === "participantes" && (
   <div className="participants-section">
     <h2>Participantes</h2>
 
@@ -306,7 +308,7 @@ if (!tournament) {
   </div>
 )}
 
-          {activeSection === "fixture" && (
+          {isAdmin && activeSection === "fixture" && (
   <div className="fixture-section">
     <h2>Fixture del campeonato</h2>
 

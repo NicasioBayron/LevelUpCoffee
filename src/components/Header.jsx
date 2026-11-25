@@ -55,7 +55,7 @@ export function Header() {
             {user ? (
               <>
                 <NavLink to="/perfil">Mi Perfil</NavLink>
-                {user.role === "admin" && <NavLink to="/admin">Admin</NavLink>}
+                {(user.role === "admin" || user.rol === "ADMIN") && <NavLink to="/admin">Admin</NavLink>}
                 <button className="text-button" onClick={logout}>
                   Salir
                 </button>
