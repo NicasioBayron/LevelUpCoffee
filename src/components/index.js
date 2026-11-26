@@ -8,3 +8,4 @@ export { Field } from "./Field";
 export { ErrorMessage } from "./ErrorMessage";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { Locations } from "./Locations";
+export { PaymentAnimation } from "./PaymentAnimation";

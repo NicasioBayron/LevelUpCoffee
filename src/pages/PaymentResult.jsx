@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { money } from "../database";
 import { orderService } from "../api/services";
-import { PageTitle, Empty, ErrorMessage } from "../components";
+import { PageTitle, Empty, ErrorMessage, PaymentAnimation } from "../components";
 
 function normalizeOrder(order) {
   const items = (order.items || order.detalles || []).map((item) => ({
@@ -182,6 +182,7 @@ export function PaymentResult({ failed = false }) {
 
   return (
     <main className="container section">
+      <PaymentAnimation failed={failed} />
       <div className="result-heading">
         {failed ? (
           <span style={{ fontSize: "40px" }}>❌</span>
