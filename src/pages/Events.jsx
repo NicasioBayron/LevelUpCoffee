@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { communityService } from "../api/services";
-import { useEffect } from "react";
 import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
@@ -33,41 +33,61 @@ const fallbackEvents = [
 
 export function Events() {
   const { user, setNotice } = useShop();
-  const [selected, setSelected] = useState(null), [events, setEvents] = useState([]),
-    [error, setError] = useState(""), [loading, setLoading] = useState(true);
+
+  const [selected, setSelected] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [tournaments, setTournaments] = useState(getTournaments());
 
   useEffect(() => {
     const refresh = () => setTournaments(getTournaments());
+
     window.addEventListener("levelup:tournaments-updated", refresh);
-    return () => window.removeEventListener("levelup:tournaments-updated", refresh);
+
+    return () =>
+      window.removeEventListener("levelup:tournaments-updated", refresh);
   }, []);
 
   useEffect(() => {
-  communityService.getEventos()
-    .then((data) => {
-      console.log("EVENTOS RECIBIDOS:", data);
-      setEvents(data.map((event) => ({
-        ...event,
-        title: event.titulo,
-        text: event.descripcion,
-        image: event.imagen || "catan.png",
-        tag: "COMUNIDAD LEVEL UP",
-      })));
-    })
-    .catch(() => setEvents(fallbackEvents))
-    .finally(() => setLoading(false));
-}, []);
+    communityService.getEventos()
+      .then((data) => {
+        console.log("EVENTOS RECIBIDOS:", data);
+
+        setEvents(
+          data.map((event) => ({
+            ...event,
+            title: event.titulo,
+            text: event.descripcion,
+            image: event.imagen || "catan.png",
+            tag: "COMUNIDAD LEVEL UP",
+          }))
+        );
+      })
+      .catch(() => setEvents(fallbackEvents))
+      .finally(() => setLoading(false));
+  }, []);
 
   async function submit(e) {
     e.preventDefault();
+
     try {
       const f = Object.fromEntries(new FormData(e.currentTarget));
+
       if (!f.nombre.trim()) throw Error("Ingresa tu nombre.");
-      await communityService.crearReserva({ eventoId: selected.id, usuarioId: user?.id || null, nombreContacto: f.nombre, correoContacto: f.correo, personas: Number(f.personas) });
+
+      await communityService.crearReserva({
+        eventoId: selected.id,
+        usuarioId: user?.id || null,
+        nombreContacto: f.nombre,
+        correoContacto: f.correo,
+        personas: Number(f.personas),
+      });
+
       setSelected(null);
+
       setNotice(
-        "Solicitud guardada. La reserva queda pendiente de confirmación.",
+        "Solicitud guardada. La reserva queda pendiente de confirmación."
       );
     } catch (err) {
       setError(err.message);
@@ -76,37 +96,14 @@ export function Events() {
 
   return (
     <main className="container section">
-      <PageTitle title="Encuentra a tu equipo.">
-        Propuestas de encuentros de nuestra comunidad. Solicita una reserva y
-        coordinaremos fecha y disponibilidad.
-      </PageTitle>
-      {loading ? <p role="status">Cargando eventos…</p> : <div className="events-grid">
-        {events.map((e) => (
-          <article className="event-card" key={e.id}>
-            <img src={imageUrl(e.image.startsWith("/") ? e.image : "/img/" + e.image)} alt={e.title} />
-            <div>
-              <div className="eyebrow">{e.tag}</div>
-              <h2>{e.title}</h2>
-              <p>{e.text}</p>
-              <small>Fecha y cupos por confirmar</small>
-              <button
-                className="btn btn-outline-light mt-3"
-                onClick={() => {
-                  setSelected(e);
-                  setError("");
-                }}
-              >
-                Solicitar reserva &rarr;
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>}
-            {/* CAMPEONATOS */}
+
+      {/* CAMPEONATOS */}
       <section className="tournaments-section">
         <div className="tournaments-heading">
           <span className="eyebrow">COMPETENCIA LEVEL UP</span>
+
           <h2>Campeonatos</h2>
+
           <p>
             Participa en nuestros torneos, enfrenta nuevos desafíos
             y demuestra tus habilidades.
@@ -122,21 +119,71 @@ export function Events() {
           ))}
         </div>
       </section>
+
+      {/* EVENTOS DE LA COMUNIDAD */}
+      <PageTitle title="Encuentra a tu equipo.">
+        Propuestas de encuentros de nuestra comunidad. Solicita una reserva y
+        coordinaremos fecha y disponibilidad.
+      </PageTitle>
+
+      {loading ? (
+        <p role="status">Cargando eventos…</p>
+      ) : (
+        <div className="events-grid">
+          {events.map((e) => (
+            <article className="event-card" key={e.id}>
+              <img
+                src={imageUrl(
+                  e.image.startsWith("/")
+                    ? e.image
+                    : "/img/" + e.image
+                )}
+                alt={e.title}
+              />
+
+              <div>
+                <div className="eyebrow">{e.tag}</div>
+
+                <h2>{e.title}</h2>
+
+                <p>{e.text}</p>
+
+                <small>Fecha y cupos por confirmar</small>
+
+                <button
+                  className="btn btn-outline-light mt-3"
+                  onClick={() => {
+                    setSelected(e);
+                    setError("");
+                  }}
+                >
+                  Solicitar reserva &rarr;
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {/* FORMULARIO DE RESERVA AL FINAL */}
       {selected && (
         <form className="panel mt-4" onSubmit={submit}>
           <h2>Reserva · {selected.titulo || selected.title}</h2>
+
           <div className="form-grid">
             <Field
               label="Tu nombre"
               name="nombre"
               defaultValue={user?.nombre}
             />
+
             <Field
               label="Correo"
               name="correo"
               type="email"
               defaultValue={user?.correo}
             />
+
             <Field
               label="Personas"
               name="personas"
@@ -146,8 +193,13 @@ export function Events() {
               defaultValue="2"
             />
           </div>
+
           <ErrorMessage message={error} />
-          <button className="btn btn-lime">Enviar solicitud</button>{" "}
+
+          <button className="btn btn-lime">
+            Enviar solicitud
+          </button>
+
           <button
             type="button"
             className="btn btn-outline-light"
@@ -157,6 +209,9 @@ export function Events() {
           </button>
         </form>
       )}
+
     </main>
   );
 }
+
+
