@@ -51,6 +51,9 @@ export function Provider({ children }) {
 
   const login = (loggedUser) => {
     sessionStorage.setItem("levelup.user", String(loggedUser.id));
+    if (loggedUser.token) {
+      sessionStorage.setItem("levelup.token", loggedUser.token);
+    }
     setUser(loggedUser);
     setSession(String(loggedUser.id));
   };
