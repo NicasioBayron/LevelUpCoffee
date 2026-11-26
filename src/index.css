@@ -2094,6 +2094,36 @@ footer {
   width: 100%;
 }
 
+.standings-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+
+.standings-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+.standings-table th,
+.standings-table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+
+.standings-table th {
+  color: #c6f36b;
+  font-size: .72rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.standings-table tr:last-child td {
+  border-bottom: 0;
+}
+
 .fixture-section > h2 {
   font-size: 1.8rem;
   font-weight: 800;

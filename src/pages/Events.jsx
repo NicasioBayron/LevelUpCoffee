@@ -6,29 +6,6 @@ import { PageTitle, Field, ErrorMessage } from "../components";
 import { TournamentCard } from "../components/TournamentCard";
 import { getTournaments } from "../data/tournaments";
 
-const fallbackEvents = [
-  {
-    id: "mesa",
-    title: "Noche de juegos de mesa",
-    image: "catan.png",
-    tag: "ESTRATEGIA & AMIGOS",
-    text: "Aprende un juego nuevo o trae tu favorito. Hay lugar para todos.",
-  },
-  {
-    id: "tcg",
-    title: "Encuentro Pokémon TCG",
-    image: "cartaspokemon.png",
-    tag: "CARTAS & COMUNIDAD",
-    text: "Comparte tu colección y encuentra a tu próximo rival.",
-  },
-  {
-    id: "coop",
-    title: "Tarde de cooperativos",
-    image: "overcooked.png",
-    tag: "UN EQUIPO, UNA MISIÓN",
-    text: "Reúne a tu grupo y enfrenten juntos un nuevo desafío.",
-  },
-];
 
 export function Events() {
   const { user, setNotice } = useShop();
@@ -60,11 +37,11 @@ export function Events() {
       .getEventos()
       .then((data) => {
         setEvents(
-          data.map((event) => ({
+          data.map((event, index) => ({
             ...event,
             title: event.titulo,
             text: event.descripcion,
-            image: event.imagen || "catan.png",
+            image: index === 1 ? "dados.png" : (event.imagen || "catan.png"),
             tag: "COMUNIDAD LEVEL UP",
           }))
         );

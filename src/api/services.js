@@ -275,6 +275,9 @@ export const tournamentService = {
     const { data } = await api.post(`/torneos/${id}/inscripciones`, payload);
     return data;
   },
+  withdraw: async (id, usuarioId) => {
+    await api.delete(`/torneos/${id}/inscripciones/usuario/${usuarioId}`);
+  },
   participants: async (id) => {
     const { data } = await api.get(`/torneos/${id}/inscripciones`);
     return data;
