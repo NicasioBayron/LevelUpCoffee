@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { db, money, price } from "../database";
-import { productService } from "../api/services";
+import { productService, cartService } from "../api/services";
 import { migrateCartProductIds } from "../api/cart";
 import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
 import { PageTitle, Empty, ErrorMessage, Quantity } from "../components";
 
 export function Cart() {
-  const { setNotice } = useShop();
+  const { setNotice, cartId } = useShop();
   const lines = db.list("cart");
   const hasLines = lines.length > 0;
   const cartKey = lines.map((line) => line.id).join(",");
@@ -73,17 +73,19 @@ export function Cart() {
     };
   }, [cartKey, hasLines, requestKey]);
 
-  function change(id, quantity) {
+  async function change(id, quantity) {
     try {
       db.setCart(lines.map((line) => (line.id === id ? { ...line, quantity } : line)));
+      if (cartId) await cartService.update(cartId, id, quantity);
     } catch (error) {
       setNotice(error.message);
     }
   }
 
-  function remove(id) {
+  async function remove(id) {
     try {
       db.setCart(lines.filter((line) => line.id !== id));
+      if (cartId) await cartService.remove(cartId, id);
     } catch (error) {
       setNotice(error.message);
     }

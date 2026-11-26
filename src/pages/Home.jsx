@@ -7,6 +7,7 @@ import { ErrorMessage, ProductCard } from "../components";
 
 export function Home() {
   const heroContentRef = useRef(null);
+  const homeSectionsRef = useRef(null);
 
   const [result, setResult] = useState({
     products: [],
@@ -26,8 +27,7 @@ export function Home() {
 
 useEffect(() => {
   const el = heroContentRef.current;
-  console.log("ANIMANDO HERO -> ref:", el, "gsap:", gsap?.version);
-  if (!el) return;
+  if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
 
   const ctx = gsap.context(() => {
     gsap.fromTo(
@@ -36,7 +36,7 @@ useEffect(() => {
   {
     y: 0,
     opacity: 1,
-    duration: 2.2,
+    duration: 1.15,
     stagger: 0.2,
     ease: "power3.out",
   }
@@ -46,8 +46,44 @@ useEffect(() => {
   return () => ctx.revert();
 }, []);
 
+  useEffect(() => {
+    const root = homeSectionsRef.current;
+    if (!root || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+
+    const sections = root.querySelectorAll("[data-home-reveal]");
+    const observers = [];
+
+    sections.forEach((section) => {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (!entry.isIntersecting) return;
+
+          gsap.fromTo(
+            section.children,
+            { y: 80, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 1.15,
+              stagger: 0.2,
+              ease: "power3.out",
+              clearProps: "transform",
+            }
+          );
+          observer.disconnect();
+        },
+        { threshold: 0.12 }
+      );
+
+      observer.observe(section);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach((observer) => observer.disconnect());
+  }, []);
+
   return (
-    <>
+    <div ref={homeSectionsRef}>
       <section className="hero">
         <div
           className="hero-photo"
@@ -94,7 +130,7 @@ useEffect(() => {
         </div>
       </section>
 
-      <div className="benefit-bar">
+      <div className="benefit-bar" data-home-reveal>
         <div className="container">
           <span>Café con personalidad</span>
           <span><Link to="/eventos">Juegos para cada equipo</Link></span>
@@ -103,7 +139,7 @@ useEffect(() => {
         </div>
       </div>
 
-      <section className="container section">
+      <section className="container section" data-home-reveal>
         <div className="section-heading">
           <div>
             <div className="eyebrow">ELIGE TU AVENTURA</div>
@@ -132,7 +168,7 @@ useEffect(() => {
         </div>
       </section>
 
-      <section className="container section pt-0">
+      <section className="container section pt-0" data-home-reveal>
         <div className="section-heading">
           <div>
             <div className="eyebrow">EL LOOT MÁS BUSCADO</div>
@@ -166,6 +202,6 @@ useEffect(() => {
           <p>No hay productos para mostrar.</p>
         )}
       </section>
-    </>
+    </div>
   );
 }

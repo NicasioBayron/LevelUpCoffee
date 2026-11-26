@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { communityService } from "../api/services";
+import { communityService, tournamentService } from "../api/services";
 import { imageUrl } from "../imageUrl";
 import { useShop } from "../Store.jsx";
 import { PageTitle, Field, ErrorMessage } from "../components";
@@ -38,22 +37,28 @@ export function Events() {
   const [events, setEvents] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [tournaments, setTournaments] = useState(getTournaments());
+  const [tournaments, setTournaments] = useState([]);
 
   useEffect(() => {
-    const refresh = () => setTournaments(getTournaments());
-
-    window.addEventListener("levelup:tournaments-updated", refresh);
-
-    return () =>
-      window.removeEventListener("levelup:tournaments-updated", refresh);
+    tournamentService
+      .getAll()
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTournaments(data);
+        } else {
+          setTournaments(getTournaments());
+        }
+      })
+      .catch((e) => {
+        console.warn("No se pudo conectar con el backend de torneos, usando datos locales:", e);
+        setTournaments(getTournaments());
+      });
   }, []);
 
   useEffect(() => {
-    communityService.getEventos()
+    communityService
+      .getEventos()
       .then((data) => {
-        console.log("EVENTOS RECIBIDOS:", data);
-
         setEvents(
           data.map((event) => ({
             ...event,
@@ -213,5 +218,3 @@ export function Events() {
     </main>
   );
 }
-
-

@@ -213,3 +213,74 @@ export const communityService = {
     return data;
   },
 };
+
+export const cartService = {
+  get: async ({ usuarioId = null, sessionToken = null } = {}) => {
+    const { data } = await api.get("/carrito", { params: { usuarioId, sessionToken } });
+    return data;
+  },
+  add: async (id, productoId, cantidad) => {
+    const { data } = await api.post(`/carrito/${id}/items`, { productoId, cantidad });
+    return data;
+  },
+  update: async (id, productoId, cantidad) => {
+    const { data } = await api.put(`/carrito/${id}/items/${productoId}`, { cantidad });
+    return data;
+  },
+  remove: async (id, productoId) => {
+    const { data } = await api.delete(`/carrito/${id}/items/${productoId}`);
+    return data;
+  },
+  clear: async (id) => api.delete(`/carrito/${id}`),
+};
+
+export const paymentService = {
+  process: async (paymentData) => {
+    const { data } = await api.post("/pagos/procesar", paymentData);
+    return data;
+  },
+  getByOrder: async (number) => {
+    const { data } = await api.get(`/pagos/orden/${number}`);
+    return data;
+  },
+};
+
+export const tournamentService = {
+  getAll: async () => {
+    const { data } = await api.get("/torneos");
+    return data.map((item) => ({
+      ...item,
+      title: item.title ?? item.titulo,
+      game: item.game ?? item.juego,
+      description: item.description ?? item.descripcion,
+      image: item.image ?? item.imagen,
+      date: item.date ?? item.fecha,
+      maxParticipants: item.maxParticipants ?? item.maxParticipantes,
+      registered: item.registered ?? item.inscripciones?.length ?? 0,
+      status: item.status ?? item.estado,
+    }));
+  },
+  getById: async (id) => {
+    const { data } = await api.get(`/torneos/${id}`);
+    return data;
+  },
+  create: async (payload) => {
+    const { data } = await api.post("/torneos", payload);
+    return data;
+  },
+  delete: async (id) => {
+    await api.delete(`/torneos/${id}`);
+  },
+  register: async (id, payload) => {
+    const { data } = await api.post(`/torneos/${id}/inscripciones`, payload);
+    return data;
+  },
+  participants: async (id) => {
+    const { data } = await api.get(`/torneos/${id}/inscripciones`);
+    return data;
+  },
+  matches: async (id) => {
+    const { data } = await api.get(`/torneos/${id}/partidas`);
+    return data;
+  },
+};

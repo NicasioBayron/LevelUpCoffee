@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { db } from "./database";
-import { authService } from "./api/services";
+import { authService, cartService } from "./api/services";
 
 const Context = createContext();
 
@@ -9,6 +9,13 @@ export function Provider({ children }) {
     [notice, setNotice] = useState("");
   const [session, setSession] = useState(() => sessionStorage.getItem("levelup.user"));
   const [user, setUser] = useState(null);
+  const [cartId, setCartId] = useState(null);
+  const [sessionToken] = useState(() => {
+    const key = "levelup.cart.session";
+    let value = sessionStorage.getItem(key);
+    if (!value) { value = crypto.randomUUID(); sessionStorage.setItem(key, value); }
+    return value;
+  });
 
   useEffect(() => {
     const update = () => setVersion((v) => v + 1);
@@ -30,6 +37,12 @@ export function Provider({ children }) {
   }, [session]);
 
   useEffect(() => {
+    cartService.get({ usuarioId: session ? Number(session) : null, sessionToken })
+      .then((cart) => { setCartId(cart.id); db.setCart((cart.items || []).map((item) => ({ id: item.productoId, quantity: item.cantidad }))); })
+      .catch(() => {});
+  }, [session, sessionToken]);
+
+  useEffect(() => {
     if (notice) {
       const t = setTimeout(() => setNotice(""), 4000);
       return () => clearTimeout(t);
@@ -49,7 +62,7 @@ export function Provider({ children }) {
     setSession(null);
   };
 
-  const add = (p, quantity = 1) => {
+  const add = async (p, quantity = 1) => {
     try {
       const cart = db.list("cart"),
         line = cart.find((x) => x.id === p.id);
@@ -58,6 +71,7 @@ export function Provider({ children }) {
       if (line) line.quantity += quantity;
       else cart.push({ id: p.id, quantity });
       db.setCart(cart);
+      if (cartId) await cartService.add(cartId, p.id, quantity);
       setNotice(`${p.nombre} añadido al carrito`);
     } catch (e) {
       setNotice(e.message);
@@ -66,7 +80,7 @@ export function Provider({ children }) {
 
   return (
     <Context.Provider
-      value={{ version, user, login, logout, add, notice, setNotice }}
+      value={{ version, user, login, logout, add, notice, setNotice, cartId }}
     >
       {children}
     </Context.Provider>

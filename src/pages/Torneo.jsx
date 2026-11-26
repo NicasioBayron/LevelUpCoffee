@@ -1,447 +1,193 @@
-import React, { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { useShop } from "../Store.jsx";
-import { getTournaments, formatTournamentDate } from "../data/tournaments";
+import { tournamentService } from "../api/services";
+import { formatTournamentDate, getTournaments } from "../data/tournaments";
+import { ErrorMessage } from "../components";
 
 export function Torneo() {
   const { id } = useParams();
-  const [activeSection, setActiveSection] = useState("informacion");
-const [showRegistration, setShowRegistration] = useState(false);
-const [registered, setRegistered] = useState(false);
-const [participantCount, setParticipantCount] = useState(0);
-const { user, setNotice } = useShop();
+  const { user, setNotice } = useShop();
   const isAdmin = user?.rol === "ADMIN" || user?.role === "admin";
+  const [tournament, setTournament] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const [matches, setMatches] = useState([]);
+  const [section, setSection] = useState("info");
+  const [error, setError] = useState("");
+  const [registered, setRegistered] = useState(false);
 
-  // Datos de los campeonatos
-const tournaments = {
-  1: {
-    id: 1,
-    title: "Level Up Valorant Cup",
-    game: "Valorant",
-    description:
-      "Participa en nuestro campeonato, demuestra tus habilidades y compite con otros jugadores de la comunidad Level Up Coffee.",
-    date: "15 de diciembre de 2026",
-    maxParticipants: 16,
-    registered: 8,
-    status: "Inscripciones abiertas",
-    prize: "Premio sorpresa",
-    modality: "Eliminación directa",
-  },
+  useEffect(() => {
+    tournamentService
+      .getById(id)
+      .then((data) => {
+        setTournament({
+          ...data,
+          titulo: data.titulo || data.title,
+          juego: data.juego || data.game,
+          descripcion: data.descripcion || data.description,
+          fecha: data.fecha || data.date,
+          maxParticipantes: data.maxParticipantes || data.maxParticipants,
+          estado: data.estado || data.status,
+          premio: data.premio || "Premio sorpresa",
+          modalidad: data.modalidad || "LIGUILLA",
+        });
+      })
+      .catch(() => {
+        const fallback = getTournaments().find((t) => String(t.id) === String(id));
+        if (fallback) {
+          setTournament({
+            ...fallback,
+            titulo: fallback.title,
+            juego: fallback.game,
+            descripcion: fallback.description,
+            fecha: fallback.date,
+            maxParticipantes: fallback.maxParticipants,
+            estado: fallback.status,
+            premio: fallback.prize || "Premio sorpresa",
+            modalidad: fallback.mode || "LIGUILLA",
+          });
+        } else {
+          setError("No se pudo cargar la información del campeonato.");
+        }
+      });
+  }, [id]);
 
-  2: {
-    id: 2,
-    title: "Mario Kart Championship",
-    game: "Mario Kart",
-    description:
-      "Compite en emocionantes carreras, demuestra tu habilidad al volante y conviértete en el campeón de Level Up Coffee.",
-    date: "20 de diciembre de 2026",
-    maxParticipants: 12,
-    registered: 5,
-    status: "Inscripciones abiertas",
-    prize: "Premio sorpresa",
-    modality: "Carreras por rondas",
-  },
-};
+  useEffect(() => {
+    if (isAdmin && tournament) {
+      tournamentService.participants(id).then(setParticipants).catch(() => {});
+      tournamentService.matches(id).then(setMatches).catch(() => {});
+    }
+  }, [id, isAdmin, tournament]);
 
-const tournament = tournaments[id] || getTournaments().find((item) => String(item.id) === String(id));
-const sampleParticipants = {
-  1: [
-    "Shadow",
-    "DarkWolf",
-    "Phoenix",
-    "Nexus",
-    "Zero",
-    "Viper",
-    "Ghost",
-    "Reaper",
-  ],
-  2: [
-    "MarioFan",
-    "LuigiPro",
-    "SpeedKing",
-    "YoshiPlayer",
-    "ToadRacer",
-  ],
-};
-
-const participants = [
-  ...(sampleParticipants[id] || tournament?.players || []),
-  ...(registered
-    ? [user?.nombre || user?.name || "Jugador"]
-    : []),
-];
-React.useEffect(() => {
-  if (tournament) {
-    setParticipantCount(tournament.registered);
+  if (error && !tournament) {
+    return (
+      <main className="container section">
+        <ErrorMessage message={error} />
+        <Link to="/eventos" className="tournament-back">← Volver a eventos</Link>
+      </main>
+    );
   }
-}, [id]);
-if (!tournament) {
-  return (
-    <main className="container section">
-      <h2>Campeonato no encontrado</h2>
-      <Link to="/eventos" className="tournament-back">
-        ← Volver a eventos
-      </Link>
-    </main>
-  );
-}
+
+  if (!tournament) {
+    return (
+      <main className="container section">
+        <p role="status">Cargando torneo…</p>
+      </main>
+    );
+  }
+
+  const register = async () => {
+    if (!user) return setNotice("Debes iniciar sesión para inscribirte.");
+    try {
+      await tournamentService.register(id, {
+        usuarioId: user.id,
+        nombreJugador: user.nombre || user.name || "Jugador",
+        correoJugador: user.correo || user.email,
+      });
+      setRegistered(true);
+      setNotice("¡Tu inscripción fue registrada!");
+    } catch (e) {
+      setError(e.response?.data?.error || e.message);
+    }
+  };
 
   return (
     <main className="container section tournament-detail">
-
-      {/* Botón para volver a eventos */}
-      <Link to="/eventos" className="tournament-back">
-        ← Volver a eventos
-      </Link>
-
-      {/* Encabezado */}
+      <Link to="/eventos" className="tournament-back">← Volver a eventos</Link>
+      
       <section className="tournament-hero">
-
         <div className="tournament-hero-content">
-          <span className="tournament-status">
-            {tournament.status}
-          </span>
-
-          <h1>{tournament.title}</h1>
-
-          <p>{tournament.description}</p>
-
-          <button
-  className="btn btn-lime"
-  onClick={() => {
-    if (!user) {
-      setNotice("Debes iniciar sesión para inscribirte.");
-      return;
-    }
-
-    if (registered) {
-      setNotice("Ya estás inscrito en este campeonato.");
-      return;
-    }
-
-    if (participantCount >= tournament.maxParticipants) {
-  setNotice("Este campeonato ya está completo.");
-  return;
-}
-  setShowRegistration(true);
-
-  }}
->
-  Inscribirme al campeonato
-</button>
+          <span className="tournament-status">{tournament.estado}</span>
+          <h1>{tournament.titulo}</h1>
+          <p>{tournament.descripcion}</p>
+          <button className="btn btn-lime" onClick={register} disabled={registered}>
+            {registered ? "Inscrito" : "Inscribirme al campeonato"}
+          </button>
         </div>
-
       </section>
 
-      {showRegistration && (
-  <div className="registration-overlay">
-    <div className="registration-modal">
-      <button
-        className="registration-close"
-        onClick={() => setShowRegistration(false)}
-      >
-        ×
-      </button>
-
-      <h2>Inscripción al campeonato</h2>
-
-      <p>
-        Estás a punto de inscribirte en:
-      </p>
-
-      <h3>{tournament.title}</h3>
-
-      <div className="registration-user">
-        <p>
-          <strong>Jugador:</strong>{" "}
-          {user?.nombre || user?.name || "Usuario"}
-        </p>
-
-        <p>
-          <strong>Correo:</strong>{" "}
-          {user?.email || "Correo de tu cuenta"}
-        </p>
-      </div>
-
-      <p className="registration-warning">
-        Recuerda que al confirmar tu inscripción estarás
-        participando oficialmente en este campeonato.
-      </p>
-
-      <div className="registration-actions">
-        <button
-          className="registration-cancel"
-          onClick={() => setShowRegistration(false)}
-        >
-          Cancelar
-        </button>
-
-        <button
-          className="btn btn-lime"
-          onClick={() => {
-            setRegistered(true);
-            setParticipantCount((count) => count + 1);
-            setShowRegistration(false);
-            setNotice("¡Tu inscripción fue registrada!");
-          }}
-        >
-          Confirmar inscripción
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-      {/* Información rápida */}
       <section className="tournament-info-grid">
-
         <article className="tournament-info-card">
           <span>🎮 Juego</span>
-          <h3>{tournament.game}</h3>
+          <h3>{tournament.juego}</h3>
         </article>
-
         <article className="tournament-info-card">
           <span>📅 Fecha</span>
-          <h3>{formatTournamentDate(tournament.date)}</h3>
+          <h3>{formatTournamentDate(tournament.fecha)}</h3>
         </article>
-
         <article className="tournament-info-card">
           <span>👥 Participantes</span>
-          <h3>
-            {participantCount} / {tournament.maxParticipants}
-          </h3>
+          <h3>{tournament.inscripciones?.length || participants.length || tournament.registered || 0} / {tournament.maxParticipantes}</h3>
         </article>
-
         <article className="tournament-info-card">
           <span>🏆 Premio</span>
-          <h3>{tournament.prize}</h3>
+          <h3>{tournament.premio}</h3>
         </article>
-
       </section>
 
-      {/* Navegación interna */}
       <section className="tournament-sections">
-
         <div className="tournament-tabs">
-
-          <button
-            className={activeSection === "informacion" ? "active" : ""}
-            onClick={() => setActiveSection("informacion")}
-          >
+          <button className={section === "info" ? "active" : ""} onClick={() => setSection("info")}>
             Información
           </button>
-
-          {isAdmin && <button
-            className={activeSection === "participantes" ? "active" : ""}
-            onClick={() => setActiveSection("participantes")}
-          >
-            Participantes
-          </button>}
-
-          {isAdmin && <button
-            className={activeSection === "fixture" ? "active" : ""}
-            onClick={() => setActiveSection("fixture")}
-          >
-            Fixture
-          </button>}
-
+          {isAdmin && (
+            <>
+              <button className={section === "participants" ? "active" : ""} onClick={() => setSection("participants")}>
+                Participantes
+              </button>
+              <button className={section === "fixture" ? "active" : ""} onClick={() => setSection("fixture")}>
+                Fixture
+              </button>
+            </>
+          )}
         </div>
 
         <div className="tournament-tab-content">
-
-          {activeSection === "informacion" && (
+          {section === "info" && (
             <div>
               <h2>Información del campeonato</h2>
-
-              <p>
-                <strong>Modalidad: </strong> {tournament.modality}
-              </p>
-
-              <p>
-                <strong>Fecha: </strong> {formatTournamentDate(tournament.date)}
-              </p>
-
-              <p>
-                <strong>Cupos: </strong> {tournament.maxParticipants} jugadores
-              </p>
-
-              <p>
-                <strong>Inscritos: </strong> {participantCount} jugadores
-              </p>
-
-              <p>
-                <strong>Premio: </strong> {tournament.prize}
-              </p>
+              <p><strong>Modalidad:</strong> {tournament.modalidad}</p>
+              <p><strong>Fecha:</strong> {formatTournamentDate(tournament.fecha)}</p>
+              <p><strong>Cupos:</strong> {tournament.maxParticipantes} jugadores</p>
+              <p><strong>Premio:</strong> {tournament.premio}</p>
             </div>
           )}
 
-          {isAdmin && activeSection === "participantes" && (
-  <div className="participants-section">
-    <h2>Participantes</h2>
+          {isAdmin && section === "participants" && (
+            <div className="participants-section">
+              <h2>Participantes</h2>
+              {participants.map((p) => (
+                <div className="participant-card" key={p.id}>
+                  <strong>{p.nombreJugador}</strong>
+                  <span>{p.correoJugador}</span>
+                </div>
+              ))}
+              {!participants.length && <p className="muted">No hay jugadores inscritos aún.</p>}
+            </div>
+          )}
 
-    <p>
-      Jugadores inscritos en este campeonato.
-    </p>
-
-    <div className="participants-list">
-      {participants.map((participant, index) => (
-        <div className="participant-card" key={index}>
-          <div className="participant-avatar">
-            {participant.charAt(0).toUpperCase()}
-          </div>
-
-          <div className="participant-details">
-            <strong>{participant}</strong>
-            <span>Jugador inscrito</span>
-          </div>
-
-          <span className="participant-number">
-            #{index + 1}
-          </span>
+          {isAdmin && section === "fixture" && (
+            <div className="fixture-section">
+              <h2>Fixture del campeonato</h2>
+              {matches.map((m) => (
+                <div className="fixture-match" key={m.id}>
+                  <div className="fixture-player">
+                    <strong>{m.jugadorUno}</strong>
+                    <span>{m.puntajeUno ?? "-"}</span>
+                  </div>
+                  <div className="fixture-vs">VS</div>
+                  <div className="fixture-player">
+                    <strong>{m.jugadorDos}</strong>
+                    <span>{m.puntajeDos ?? "-"}</span>
+                  </div>
+                  <span className="fixture-result">{m.estado}</span>
+                </div>
+              ))}
+              {!matches.length && <p className="muted">No hay partidas generadas aún.</p>}
+            </div>
+          )}
         </div>
-      ))}
-    </div>
-
-    <p className="participants-total">
-      {participantCount} / {tournament.maxParticipants} jugadores inscritos
-    </p>
-  </div>
-)}
-
-          {isAdmin && activeSection === "fixture" && (
-  <div className="fixture-section">
-    <h2>Fixture del campeonato</h2>
-
-    <p className="fixture-subtitle">
-      Calendario de enfrentamientos y rondas del campeonato.
-    </p>
-
-    {id === "1" ? (
-      <>
-        <div className="fixture-round">
-          <div className="fixture-round-heading">
-            <h3>Primera ronda</h3>
-            <span>ENFRENTAMIENTOS</span>
-          </div>
-
-          <div className="fixture-match">
-            <div className="fixture-player">
-              <span className="fixture-avatar">S</span>
-              <strong>Shadow</strong>
-              <span className="fixture-score">13</span>
-            </div>
-            <div className="fixture-vs">VS</div>
-            <div className="fixture-player">
-              <span className="fixture-avatar">D</span>
-              <strong>DarkWolf</strong>
-              <span className="fixture-score">8</span>
-            </div>
-            <span className="fixture-result">Finalizado</span>
-          </div>
-
-          <div className="fixture-match">
-            <div className="fixture-player">
-              <span className="fixture-avatar">P</span>
-              <strong>Phoenix</strong>
-              <span className="fixture-score">10</span>
-            </div>
-            <div className="fixture-vs">VS</div>
-            <div className="fixture-player">
-              <span className="fixture-avatar">N</span>
-              <strong>Nexus</strong>
-              <span className="fixture-score">13</span>
-            </div>
-            <span className="fixture-result">Finalizado</span>
-          </div>
-        </div>
-
-        <div className="fixture-round">
-          <div className="fixture-round-heading">
-            <h3>Semifinal</h3>
-            <span>PRÓXIMA RONDA</span>
-          </div>
-
-          <div className="fixture-match fixture-pending">
-            <div className="fixture-player">
-              <span className="fixture-avatar">S</span>
-              <strong>Shadow</strong>
-            </div>
-            <div className="fixture-vs">VS</div>
-            <div className="fixture-player">
-              <span className="fixture-avatar">N</span>
-              <strong>Nexus</strong>
-            </div>
-            <span className="fixture-result">Pendiente</span>
-          </div>
-        </div>
-      </>
-    ) : (
-      <>
-        <div className="fixture-round">
-          <div className="fixture-round-heading">
-            <h3>Clasificación</h3>
-            <span>RESULTADOS DE CARRERA</span>
-          </div>
-
-          <div className="fixture-match">
-            <div className="fixture-player">
-              <span className="fixture-avatar">M</span>
-              <strong>MarioFan</strong>
-              <span className="fixture-score">1.º</span>
-            </div>
-            <span className="fixture-result">Clasificado</span>
-          </div>
-
-          <div className="fixture-match">
-            <div className="fixture-player">
-              <span className="fixture-avatar">L</span>
-              <strong>LuigiPro</strong>
-              <span className="fixture-score">2.º</span>
-            </div>
-            <span className="fixture-result">Clasificado</span>
-          </div>
-
-          <div className="fixture-match">
-            <div className="fixture-player">
-              <span className="fixture-avatar">Y</span>
-              <strong>YoshiPlayer</strong>
-              <span className="fixture-score">3.º</span>
-            </div>
-            <span className="fixture-result">Clasificado</span>
-          </div>
-        </div>
-
-        <div className="fixture-round">
-          <div className="fixture-round-heading">
-            <h3>Gran final</h3>
-            <span>PRÓXIMA CARRERA</span>
-          </div>
-
-          <div className="fixture-match fixture-pending">
-            <div className="fixture-player">
-              <span className="fixture-avatar">M</span>
-              <strong>MarioFan</strong>
-            </div>
-
-            <div className="fixture-vs">VS</div>
-
-            <div className="fixture-player">
-              <span className="fixture-avatar">L</span>
-              <strong>LuigiPro</strong>
-            </div>
-
-            <span className="fixture-result">Pendiente</span>
-          </div>
-        </div>
-      </>
-    )}
-  </div>
-)}
-
-        </div>
-
       </section>
-
     </main>
   );
 }

@@ -1,7 +1,11 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:9090/api",
+  // Mantiene el mismo host que usa el navegador (localhost o 127.0.0.1).
+  // En Docker/producción se puede sobrescribir con VITE_API_URL.
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    `${window.location.protocol}//${window.location.hostname}:9090/api`,
   headers: {
     "Content-Type": "application/json",
   },

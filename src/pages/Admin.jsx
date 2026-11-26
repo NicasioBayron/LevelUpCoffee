@@ -6,8 +6,8 @@ import {
   authService,
   orderService,
   communityService,
+  tournamentService,
 } from "../api/services";
-import { createTournament } from "../data/tournaments";
 import { PageTitle, ErrorMessage } from "../components";
 import { money, price } from "../database";
 
@@ -17,7 +17,7 @@ const TABS = [
   ["orders", "Órdenes"],
   ["messages", "Mensajes"],
   ["reservations", "Reservas"],
-  ["tournaments", "Crear torneo"],
+  ["tournaments", "Torneos"],
 ];
 
 const INITIAL_FORM = {
@@ -35,6 +35,7 @@ const INITIAL_DATA = {
   orders: [],
   messages: [],
   reservations: [],
+  tournaments: [],
 };
 
 export function Admin() {
@@ -50,22 +51,37 @@ export function Admin() {
     try {
       setData(
         Object.fromEntries(
-          ["products", "users", "orders", "messages", "reservations"].map(
+          ["products", "users", "orders", "messages", "reservations", "tournaments"].map(
             (key) => [key, []]
           )
         )
       );
 
-      const [products, users, orders, messages, reservations] =
-        await Promise.all([
-          productService.getAll(),
-          authService.getAll(),
-          orderService.getAll(),
-          communityService.getMensajes(),
-          communityService.getReservas(),
-        ]);
-
-      setData({ products, users, orders, messages, reservations });
+      const results = await Promise.allSettled([
+        productService.getAll(),
+        authService.getAll(),
+        orderService.getAll(),
+        communityService.getMensajes(),
+        communityService.getReservas(),
+        tournamentService.getAll(),
+      ]);
+      const value = (index) => results[index].status === "fulfilled" ? results[index].value : [];
+      setData({
+        products: value(0),
+        users: value(1),
+        orders: value(2),
+        messages: value(3),
+        reservations: value(4),
+        tournaments: value(5),
+      });
+      const failed = results.filter((result) => result.status === "rejected");
+      if (failed.length === results.length) {
+        setError(failed[0].reason?.response?.data?.error || failed[0].reason?.message || "No se pudo cargar ningún servicio.");
+      } else {
+        // Una sección puede fallar sin ocultar los datos que sí respondieron.
+        setError("");
+        if (failed.length) console.warn("Algunos servicios no respondieron:", failed);
+      }
     } catch (e) {
       setError(e.response?.data?.error || e.message);
     }
@@ -97,15 +113,29 @@ export function Admin() {
     }
   };
 
-  const handleCreateTournament = () => {
+  const handleCreateTournament = async () => {
     if (!form.title || !form.game || !form.date || !form.image) {
       return setError("Completa todos los campos del torneo.");
     }
 
-    createTournament(form);
-    window.dispatchEvent(new Event("levelup:tournaments-updated"));
-    setForm(INITIAL_FORM);
-    setNotice("Torneo creado y publicado en Comunidad.");
+    try {
+      await tournamentService.create({ ...form, maxParticipants: Number(form.maxParticipants) });
+      setForm(INITIAL_FORM);
+      setNotice("Torneo creado y publicado en Comunidad.");
+    } catch (e) {
+      setError(e.response?.data?.error || e.message);
+    }
+  };
+
+  const handleDeleteTournament = async (tournament) => {
+    if (!window.confirm(`¿Eliminar el torneo "${tournament.title}"?`)) return;
+    try {
+      await tournamentService.delete(tournament.id);
+      await load();
+      setNotice("Torneo eliminado.");
+    } catch (e) {
+      setError(e.response?.data?.error || e.message);
+    }
   };
 
   const currentTabLabel = TABS.find((x) => x[0] === tab)?.[1];
@@ -246,6 +276,7 @@ export function Admin() {
               {!currentItems.length && <p className="muted">Sin registros.</p>}
             </>
           )}
+          {tab === "tournaments" && <section className="mt-4"><h2>Torneos existentes</h2>{data.tournaments.map((tournament) => <article className="panel mb-3" key={tournament.id}><strong>{tournament.title}</strong><p>{tournament.game} · {tournament.date}</p><button className="btn btn-outline-light" type="button" onClick={() => handleDeleteTournament(tournament)}>Eliminar torneo</button></article>)}{!data.tournaments.length && <p className="muted">No hay torneos creados.</p>}</section>}
         </section>
       </div>
     </main>

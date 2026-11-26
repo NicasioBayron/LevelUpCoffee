@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { db, money, price } from "../database";
-import { productService, orderService } from "../api/services";
+import { productService, orderService, paymentService, cartService } from "../api/services";
 import { migrateCartProductIds } from "../api/cart";
 import { branches, openingHours } from "../locations";
 import { useShop } from "../Store.jsx";
@@ -10,7 +10,7 @@ import { PageTitle, Empty, Field, ErrorMessage } from "../components";
 const shippingCost = 3990;
 
 export function Checkout() {
-  const { user, setNotice } = useShop();
+  const { user, setNotice, cartId } = useShop();
   const navigate = useNavigate();
   const [delivery, setDelivery] = useState("retiro");
   const [error, setError] = useState("");
@@ -150,6 +150,13 @@ export function Checkout() {
       if (orderId === undefined || orderId === null) {
         throw new Error("La API creó la orden, pero no devolvió su identificador.");
       }
+      await paymentService.process({
+        ordenId: orderId,
+        numeroOrden: createdOrder.numero || createdOrder.numeroOrden || `LU-${orderId}`,
+        monto: createdOrder.total ?? currentSubtotal + currentShipping,
+        metodoPago: form.payment === "credito" ? "CREDITO" : "WEBPAY",
+      });
+      if (cartId) await cartService.clear(cartId);
 
       try {
         db.setCart([]);

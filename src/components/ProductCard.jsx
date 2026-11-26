@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { imageUrl } from "../imageUrl";
 import { money, price } from "../database";
 import { useShop } from "../Store.jsx";
+import { useGsapReveal } from "../hooks/useGsapReveal";
 
 export function ProductCard({ product: p }) {
   const { add } = useShop();
+  const cardRef = useGsapReveal({ y: 18, duration: 0.55 });
   return (
-    <article className="product-card">
+    <article ref={cardRef} className="product-card">
       <Link to={"/producto/" + p.id} className="product-image">
         <img src={imageUrl(p.imagen)} alt={p.nombre} loading="lazy" />
         {p.descuento > 0 && <span className="discount">−{p.descuento}%</span>}
